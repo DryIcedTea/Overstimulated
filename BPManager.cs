@@ -3,7 +3,6 @@ using Buttplug.Core;
 using Buttplug.Core.Messages;
 using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using BepInEx.Logging;
 using UnityEngine;
@@ -13,11 +12,7 @@ namespace OvercookedBP
     internal class BPManager
     {
         private ButtplugClient _client;
-        private string _intifaceIP;
         private ManualLogSource _logger;
-
-        private CancellationTokenSource _currentVibrationCts;
-        private readonly object _vibrationLock = new object();
 
         public BPManager(ManualLogSource logger)
         {
@@ -26,38 +21,28 @@ namespace OvercookedBP
 
         public async Task ConnectButtplug(string intifaceIP)
         {
-            _intifaceIP = intifaceIP;
-
             if (_client?.Connected == true)
             {
                 _logger.LogInfo("Buttplug already connected, skipping.");
                 return;
             }
-            
-            if (_client != null)
-            {
-                _client.DeviceAdded -= HandleDeviceAdded;
-                _client.DeviceRemoved -= HandleDeviceRemoved;
-                _client.Dispose();
-            }
 
             _client = new ButtplugClient("OvercookedBP");
 
-            
-            _client.DeviceAdded += HandleDeviceAdded;
-            _client.DeviceRemoved += HandleDeviceRemoved;
-            _client.ServerDisconnect += (_, _) => _logger.LogInfo("Intiface server disconnected.");
-            _client.ErrorReceived += (_, args) => _logger.LogError($"Buttplug async error: {args.Exception.Message}");
+            _client.DeviceAdded += (_, args) => _logger.LogInfo($"[+] Device connected: {args.Device.Name}");
+            _client.DeviceRemoved += (_, args) => _logger.LogInfo($"[-] Device disconnected: {args.Device.Name}");
+            _client.ServerDisconnect += (_, _) => _logger.LogInfo("[!] Intiface server disconnected.");
+            _client.ErrorReceived += (_, args) => _logger.LogError($"[!] Error: {args.Exception.Message}");
 
-            _logger.LogInfo($"Connecting to ws://{_intifaceIP}...");
+            _logger.LogInfo($"Connecting to ws://{intifaceIP}...");
 
             try
             {
-                await _client.ConnectAsync($"ws://{_intifaceIP}");
+                await _client.ConnectAsync($"ws://{intifaceIP}");
             }
-            catch (ButtplugClientConnectorException ex)
+            catch (ButtplugClientConnectorException)
             {
-                _logger.LogError($"Could not connect to Intiface Central (is it running?): {ex.Message}");
+                _logger.LogError("Could not connect to Intiface Central! Make sure it is running and the server is started.");
                 return;
             }
             catch (Exception ex)
@@ -68,7 +53,7 @@ namespace OvercookedBP
 
             _logger.LogInfo($"Connected! {_client.Devices.Length} device(s) already available:");
             foreach (var device in _client.Devices)
-                _logger.LogInfo($"  - {device.Name} (Index: {device.Index})");
+                _logger.LogInfo($"  - {device.Name}");
         }
 
         public async Task DisconnectButtplug()
@@ -84,7 +69,7 @@ namespace OvercookedBP
             await _client.DisconnectAsync();
         }
 
-        public async Task ScanForDevices(int durationMs = 30000)
+        public async Task ScanForDevices(int durationMs = 5000)
         {
             if (_client?.Connected != true)
             {
@@ -99,20 +84,11 @@ namespace OvercookedBP
             _logger.LogInfo("Scan complete.");
         }
 
-        /// <summary>
-        /// Vibrates all connected vibrating devices continuously at the given level (0–100).
-        /// </summary>
-        public async Task VibrateDevice(float level)
+        public async Task VibrateDevices(float level)
         {
             if (!HasVibrators()) return;
 
             float intensity = Mathf.Clamp(level, 0f, 100f) / 100f;
-
-            if (intensity <= 0f)
-            {
-                await StopDevices();
-                return;
-            }
 
             foreach (var device in _client.Devices)
             {
@@ -130,43 +106,13 @@ namespace OvercookedBP
             }
         }
 
-        /// <summary>
-        /// Vibrates at the given level (0–100) for a short pulse (default 400ms), then stops.
-        /// </summary>
-        public Task VibrateDevicePulse(float level) => VibrateDevicePulse(level, 400);
-
-        public async Task VibrateDevicePulse(float level, int durationMs)
+        public async Task VibrateDevicesPulse(float level, int durationMs = 400)
         {
             if (!HasVibrators()) return;
-            
-            CancellationToken token;
-            lock (_vibrationLock)
-            {
-                _currentVibrationCts?.Cancel();
-                _currentVibrationCts = new CancellationTokenSource();
-                token = _currentVibrationCts.Token;
-            }
 
-            _logger.LogInfo($"VibrateDevicePulse {Mathf.Clamp(level, 0f, 100f)}% for {durationMs}ms");
-
-            try
-            {
-                await VibrateDevice(level);
-                await Task.Delay(durationMs, token);
-
-                
-                if (!token.IsCancellationRequested)
-                    await StopDevices();
-            }
-            catch (TaskCanceledException)
-            {
-                
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error during vibration pulse: {ex.Message}");
-                await StopDevices();
-            }
+            await VibrateDevices(level);
+            await Task.Delay(durationMs);
+            await StopDevices();
         }
 
         public async Task StopDevices()
@@ -174,14 +120,12 @@ namespace OvercookedBP
             if (_client?.Connected != true) return;
 
             _logger.LogInfo("Stopping all devices.");
-            await _client.StopAllDevicesAsync();
+            foreach (var device in _client.Devices)
+            {
+                if (!device.HasOutput(OutputType.Vibrate)) continue;
+                await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(0));
+            }
         }
-
-        private void HandleDeviceAdded(object sender, DeviceAddedEventArgs e) =>
-            _logger.LogInfo($"[+] Device connected: {e.Device.Name} (Index: {e.Device.Index})");
-
-        private void HandleDeviceRemoved(object sender, DeviceRemovedEventArgs e) =>
-            _logger.LogInfo($"[-] Device disconnected: {e.Device.Name}");
 
         private bool HasVibrators()
         {
@@ -199,5 +143,7 @@ namespace OvercookedBP
 
             return true;
         }
+        
+        
     }
 }

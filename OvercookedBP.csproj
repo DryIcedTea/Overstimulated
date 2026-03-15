@@ -18,7 +18,7 @@
   <ItemGroup>
     <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-be.*" IncludeAssets="compile" />
     <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" />
-    <PackageReference Include="Buttplug" Version="5.0.0" />
+    <PackageReference Include="Buttplug" Version="5.0.0" PrivateAssets="none" />
     <PackageReference Include="WebSocket4Net" Version="1.0.0-beta.5" />
   </ItemGroup>
 
@@ -36,4 +36,16 @@
       <HintPath>..\..\..\SteamLibrary\steamapps\common\Overcooked! All You Can Eat\BepInEx\interop\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
   </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Copy
+            SourceFiles="$(OutputPath)$(AssemblyName).dll"
+            DestinationFolder="F:\SteamLibrary\steamapps\common\Overcooked! All You Can Eat\BepInEx\plugins\OvercookedBP\"
+            SkipUnchangedFiles="false" />
+    <Copy
+            SourceFiles="@(RuntimeCopyLocalItems)"
+            DestinationFolder="F:\SteamLibrary\steamapps\common\Overcooked! All You Can Eat\BepInEx\plugins\OvercookedBP\"
+            SkipUnchangedFiles="false" />
+  </Target>
+  
 </Project>
