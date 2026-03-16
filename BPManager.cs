@@ -13,6 +13,7 @@ namespace OvercookedBP
     {
         private ButtplugClient _client;
         private ManualLogSource _logger;
+        private DateTime _lastVibrateTime = DateTime.MinValue;
 
         public BPManager(ManualLogSource logger)
         {
@@ -65,7 +66,7 @@ namespace OvercookedBP
             }
 
             _logger.LogInfo("Stopping all devices and disconnecting...");
-            await _client.StopAllDevicesAsync();
+            await StopDevices();
             await _client.DisconnectAsync();
         }
 
@@ -110,9 +111,17 @@ namespace OvercookedBP
         {
             if (!HasVibrators()) return;
 
+            _lastVibrateTime = DateTime.Now;
+            var myTime = _lastVibrateTime;
+
             await VibrateDevices(level);
-            await Task.Delay(durationMs);
-            await StopDevices();
+
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(durationMs);
+                if (_lastVibrateTime == myTime)
+                    await StopDevices();
+            });
         }
 
         public async Task StopDevices()
@@ -143,7 +152,5 @@ namespace OvercookedBP
 
             return true;
         }
-        
-        
     }
 }

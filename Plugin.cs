@@ -63,6 +63,11 @@ public class ClientWorkstation_StartWorking_Patch
     public static void Postfix(ClientWorkstation __instance, GameObject _interacter, ClientWorkableItem _item)
     {
         Plugin.Log.LogInfo("[Workstation] StartWorking triggered");
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(50);
+            await Plugin.BP.VibrateDevices(50);
+        });
     }
 }
 
@@ -72,6 +77,7 @@ public class ClientWorkstation_StopWorking_Patch
     public static void Postfix(ClientWorkstation __instance, GameObject _interacter)
     {
         Plugin.Log.LogInfo("[Workstation] StopWorking triggered");
+        _ = Plugin.BP.StopDevices();
     }
 }
 
