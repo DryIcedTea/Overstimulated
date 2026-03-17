@@ -32,6 +32,9 @@
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\SteamLibrary\steamapps\common\Overcooked! All You Can Eat\BepInEx\interop\UnityEngine.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>..\..\..\SteamLibrary\steamapps\common\Overcooked! All You Can Eat\BepInEx\interop\UnityEngine.AnimationModule.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>..\..\..\SteamLibrary\steamapps\common\Overcooked! All You Can Eat\BepInEx\interop\UnityEngine.CoreModule.dll</HintPath>
     </Reference>

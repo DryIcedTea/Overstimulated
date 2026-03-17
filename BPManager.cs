@@ -133,7 +133,12 @@ namespace OvercookedBP
             {
                 if (!device.HasOutput(OutputType.Vibrate)) continue;
                 await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(0));
+                await Task.Delay(20);
+                await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(0));
+                await Task.Delay(20);
+                await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(0));
             }
+            
         }
 
         private bool HasVibrators()
