@@ -132,7 +132,7 @@ namespace OvercookedBP
             foreach (var device in _client.Devices)
             {
                 if (!device.HasOutput(OutputType.Vibrate)) continue;
-                await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(0));
+                await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(1));
                 await Task.Delay(20);
                 await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(0));
                 await Task.Delay(20);
