@@ -13,7 +13,6 @@ namespace OvercookedBP
     {
         private ButtplugClient _client;
         private ManualLogSource _logger;
-        private DateTime _lastVibrateTime = DateTime.MinValue;
 
         public BPManager(ManualLogSource logger)
         {
@@ -111,17 +110,9 @@ namespace OvercookedBP
         {
             if (!HasVibrators()) return;
 
-            _lastVibrateTime = DateTime.Now;
-            var myTime = _lastVibrateTime;
-
             await VibrateDevices(level);
-
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(durationMs);
-                if (_lastVibrateTime == myTime)
-                    await StopDevices();
-            });
+            await Task.Delay(durationMs);
+            await StopDevices();
         }
 
         public async Task StopDevices()
@@ -132,13 +123,13 @@ namespace OvercookedBP
             foreach (var device in _client.Devices)
             {
                 if (!device.HasOutput(OutputType.Vibrate)) continue;
-                await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(1));
+                await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(0));
                 await Task.Delay(20);
+                await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(0));
                 await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(0));
                 await Task.Delay(20);
                 await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(0));
             }
-            
         }
 
         private bool HasVibrators()
