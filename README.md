@@ -51,3 +51,10 @@ Maybe. Please let me know what you want to see added/changed!
 ## Feedback
 If you have any feedback, feel free to open an issue, [tweet](https://twitter.com/DryIcedMatcha) at me, tag me on [bluesky](https://bsky.app/profile/dryicedmatcha.bsky.social) or message me on discord. You'll find me in the [buttplug.io discord](https://discord.buttplug.io/)!
 You're most likely going to get a quicker response on Discord.
+
+## Potentially known issues (**please** let me know if you encounter any of these)
+* Vibrations might sometimes fail to trigger or get stuck on until you trigger another vibration.
+  * Hitting the "dash" button should fix it for now. I'm looking into why this is happpening.
+  * Please let me know if you run into this so I know that it's not just a problem on my end!
+* Vibrations can get interrupted if another vibration fires while one is already going.
+  * This will be fixed for the full release. 
