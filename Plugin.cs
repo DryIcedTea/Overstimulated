@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using BepInEx;
 using BepInEx.Logging;
@@ -27,6 +28,7 @@ public class Plugin : BasePlugin
         Log.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
 
         BP = new BPManager(Log);
+        AddComponent<PluginUI>();
         var connectionTask = Task.Run(async () =>
         {
             try
@@ -50,7 +52,7 @@ public class Plugin : BasePlugin
 }
 
 // ==========================================
-// CHOPPING (ClientWorkstation)
+// CHOPPING
 // ==========================================
 
 [HarmonyPatch(typeof(ClientWorkstation), nameof(ClientWorkstation.StartWorking))]
@@ -59,7 +61,9 @@ public class ClientWorkstation_StartWorking_Patch
     public static void Postfix(ClientWorkstation __instance, GameObject _interacter, ClientWorkableItem _item)
     {
         if (!Plugin.Cfg.ChoppingEnabled.Value) return;
-        Plugin.Log.LogInfo($"[Workstation] StartWorking {DateTime.Now:HH:mm:ss.fff}");
+        var playerID = _interacter?.GetComponent<PlayerIDProvider>();
+        if (!PlayerFilter.IsEnabled(playerID?.GetID())) return;
+        Plugin.Log.LogInfo($"[Workstation] StartWorking triggered by Player: {playerID?.GetID()} IsLocal: {playerID?.IsLocallyControlled()}");
         _ = Plugin.BP.VibrateDevices(Plugin.Cfg.ChoppingIntensity.Value);
     }
 }
@@ -70,13 +74,15 @@ public class ClientWorkstation_StopWorking_Patch
     public static void Postfix(ClientWorkstation __instance, GameObject _interacter)
     {
         if (!Plugin.Cfg.ChoppingEnabled.Value) return;
-        Plugin.Log.LogInfo($"[Workstation] StopWorking {DateTime.Now:HH:mm:ss.fff}");
+        var playerID = _interacter?.GetComponent<PlayerIDProvider>();
+        if (!PlayerFilter.IsEnabled(playerID?.GetID())) return;
+        Plugin.Log.LogInfo($"[Workstation] StopWorking triggered by Player: {playerID?.GetID()} IsLocal: {playerID?.IsLocallyControlled()}");
         _ = Plugin.BP.StopDevices();
     }
 }
 
 // ==========================================
-// ORDER SYSTEM (ClientOrderControllerBase)
+// ORDER SYSTEM
 // ==========================================
 
 [HarmonyPatch(typeof(ClientOrderControllerBase), nameof(ClientOrderControllerBase.AddNewOrder))]
@@ -122,37 +128,7 @@ public class ClientOrderControllerBase_OnOrderExpired_Patch
 }
 
 // ==========================================
-// WASHING (ClientWashingStation)
-// ==========================================
-
-[HarmonyPatch(typeof(ClientWashingStation), nameof(ClientWashingStation.UpdateSynchronisingX))]
-public class ClientWashingStation_UpdateSynchronisingX_Patch
-{
-    private static bool _wasWashing = false;
-
-    public static void Postfix(ClientWashingStation __instance)
-    {
-        if (!Plugin.Cfg.WashingEnabled.Value) return;
-
-        bool isWashing = __instance.m_isWashing;
-
-        if (isWashing && !_wasWashing)
-        {
-            Plugin.Log.LogInfo("[Washing] Started washing!");
-            _ = Plugin.BP.VibrateDevices(Plugin.Cfg.WashingIntensity.Value);
-        }
-        else if (!isWashing && _wasWashing)
-        {
-            Plugin.Log.LogInfo("[Washing] Stopped washing!");
-            _ = Plugin.BP.StopDevices();
-        }
-
-        _wasWashing = isWashing;
-    }
-}
-
-// ==========================================
-// FIRE EXTINGUISHER (ClientSprayingUtensil)
+// FIRE EXTINGUISHER
 // ==========================================
 
 [HarmonyPatch(typeof(ClientSprayingUtensil), nameof(ClientSprayingUtensil.StartSpray))]
@@ -161,7 +137,9 @@ public class ClientSprayingUtensil_StartSpray_Patch
     public static void Postfix(ClientSprayingUtensil __instance)
     {
         if (!Plugin.Cfg.ExtinguisherEnabled.Value) return;
-        Plugin.Log.LogInfo("[FireExtinguisher] Started spraying!");
+        var playerID = __instance.m_carrier?.GetComponent<PlayerIDProvider>();
+        if (!PlayerFilter.IsEnabled(playerID?.GetID())) return;
+        Plugin.Log.LogInfo($"[FireExtinguisher] StartSpray by Player: {playerID?.GetID()} IsLocal: {playerID?.IsLocallyControlled()}");
         _ = Plugin.BP.VibrateDevices(Plugin.Cfg.ExtinguisherIntensity.Value);
     }
 }
@@ -172,13 +150,15 @@ public class ClientSprayingUtensil_StopSpray_Patch
     public static void Postfix(ClientSprayingUtensil __instance)
     {
         if (!Plugin.Cfg.ExtinguisherEnabled.Value) return;
-        Plugin.Log.LogInfo("[FireExtinguisher] Stopped spraying!");
+        var playerID = __instance.m_carrier?.GetComponent<PlayerIDProvider>();
+        if (!PlayerFilter.IsEnabled(playerID?.GetID())) return;
+        Plugin.Log.LogInfo($"[FireExtinguisher] StopSpray by Player: {playerID?.GetID()} IsLocal: {playerID?.IsLocallyControlled()}");
         _ = Plugin.BP.StopDevices();
     }
 }
 
 // ==========================================
-// PLAYER DEATH / RESPAWN (State Tracking)
+// PLAYER DEATH / RESPAWN
 // ==========================================
 [HarmonyPatch(typeof(ClientPlayerRespawnBehaviour), nameof(ClientPlayerRespawnBehaviour.UpdateSynchronisingX))]
 public class ClientPlayerRespawnBehaviour_StateTracking_Patch
@@ -202,15 +182,93 @@ public class ClientPlayerRespawnBehaviour_StateTracking_Patch
 
         if (isCurrentlyRespawning && !wasRespawning)
         {
-            Plugin.Log.LogInfo("[Respawn] Player died!");
+            var playerID = __instance.GetComponent<PlayerIDProvider>();
+            if (!PlayerFilter.IsEnabled(playerID?.GetID())) return;
+            Plugin.Log.LogInfo($"[Death] BeginRespawn by Player: {playerID?.GetID()} IsLocal: {playerID?.IsLocallyControlled()}");
             _ = Plugin.BP.VibrateDevices(Plugin.Cfg.DeathIntensity.Value);
         }
         else if (!isCurrentlyRespawning && wasRespawning)
         {
-            Plugin.Log.LogInfo("[Respawn] Player respawned!");
+            var playerID = __instance.GetComponent<PlayerIDProvider>();
+            if (!PlayerFilter.IsEnabled(playerID?.GetID())) return;
+            Plugin.Log.LogInfo($"[Death] Respawned Player: {playerID?.GetID()} IsLocal: {playerID?.IsLocallyControlled()}");
             _ = Plugin.BP.StopDevices();
         }
 
         playerRespawnStates[ptr] = isCurrentlyRespawning;
+    }
+}
+// ==========================================
+// DASHING
+// ==========================================
+
+[HarmonyPatch(typeof(ClientPlayerControlsImpl_Default), nameof(ClientPlayerControlsImpl_Default.DoDash))]
+public class ClientPlayerControlsImpl_Default_DoDash_Patch
+{
+
+    public static void Postfix(ClientPlayerControlsImpl_Default __instance)
+    {
+        if (!Plugin.Cfg.DashEnabled.Value) return;
+        
+        var playerID = __instance.m_playerIDProvider;
+        if (!PlayerFilter.IsEnabled(playerID?.GetID())) return;
+        Plugin.Log.LogInfo($"[Dash] Player: {playerID?.GetID()} IsLocal: {playerID?.IsLocallyControlled()}");
+        _ = Plugin.BP.VibrateDevicesPulse(Plugin.Cfg.DashIntensity.Value, 200);
+    }
+}
+
+
+
+// ==========================================
+// WASHING - The sink itself didn't have a thing for tracking what player used it, so I ended up with this instead.
+// ==========================================
+[HarmonyPatch(typeof(ClientPlayerControlsImpl_Default), "Update_Impl")]
+public class ClientPlayerControlsImpl_Default_WashingTracker_Patch
+{
+    private static System.Collections.Generic.Dictionary<IntPtr, bool> _playerWashingStates = new();
+
+    public static void Postfix(ClientPlayerControlsImpl_Default __instance)
+    {
+        if (__instance.m_playerIDProvider == null) return;
+        if (!Plugin.Cfg.WashingEnabled.Value) return;
+
+        IntPtr ptr = __instance.Pointer;
+        bool isCurrentlyWashing = false;
+
+        if (__instance.m_lastInteracted != null)
+        {
+            ClientWashingStation sink = __instance.m_lastInteracted.GetComponent<ClientWashingStation>();
+            if (sink != null && sink.m_isWashing)
+                isCurrentlyWashing = true;
+        }
+
+        if (!_playerWashingStates.ContainsKey(ptr))
+        {
+            _playerWashingStates[ptr] = isCurrentlyWashing;
+            return;
+        }
+
+        bool wasWashing = _playerWashingStates[ptr];
+
+        if (isCurrentlyWashing && !wasWashing)
+        {
+            var playerID = __instance.m_playerIDProvider;
+            if (!PlayerFilter.IsEnabled(playerID?.GetID())) return;
+            
+            Plugin.Log.LogInfo($"[Washing] Started washing by Player: {playerID?.GetID()} IsLocal: {playerID?.IsLocallyControlled()}");
+            if (PlayerFilter.IsEnabled(playerID?.GetID()))
+                _ = Plugin.BP.VibrateDevices(Plugin.Cfg.WashingIntensity.Value);
+        }
+        else if (!isCurrentlyWashing && wasWashing)
+        {
+            var playerID = __instance.m_playerIDProvider;
+            if (!PlayerFilter.IsEnabled(playerID?.GetID())) return;
+            
+            Plugin.Log.LogInfo($"[Washing] Stopped washing by Player: {playerID?.GetID()} IsLocal: {playerID?.IsLocallyControlled()}");
+            if (PlayerFilter.IsEnabled(playerID?.GetID()))
+                _ = Plugin.BP.StopDevices();
+        }
+
+        _playerWashingStates[ptr] = isCurrentlyWashing;
     }
 }

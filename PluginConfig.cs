@@ -40,6 +40,13 @@ public class PluginConfig
     // ==========================================
     public ConfigEntry<bool>  RespawnEnabled    { get; private set; }
     public ConfigEntry<int>   DeathIntensity     { get; private set; }
+    
+    // ==========================================
+    // Dashing
+    // ==========================================
+    
+    public ConfigEntry<bool>  DashEnabled    { get; private set; }
+    public ConfigEntry<int>   DashIntensity     { get; private set; }
 
     public PluginConfig(ConfigFile cfg)
     {
@@ -101,7 +108,7 @@ public class PluginConfig
             "Washing",
             "Enabled",
             true,
-            "Enable vibrations while washing dishes.");
+            "Enable vibrations while washing dishes. (THIS WORKS FOR EVERY PLAYER REGARDLESS OF SETTING)");
 
         WashingIntensity = cfg.Bind(
             "Washing",
@@ -139,6 +146,21 @@ public class PluginConfig
             75,
             new ConfigDescription(
                 "Vibration intensity when a player dies (0–100).",
+                new AcceptableValueRange<int>(0, 100)));
+        
+        // == Dashing ============================================================
+        DashEnabled = cfg.Bind(
+            "Dashing",
+            "Enabled",
+            true,
+            "Enable vibrations on player death.");
+
+        DashIntensity = cfg.Bind(
+            "Dashing",
+            "DashIntensity",
+            30,
+            new ConfigDescription(
+                "Vibration intensity when dashing (0–100).",
                 new AcceptableValueRange<int>(0, 100)));
     }
 }
