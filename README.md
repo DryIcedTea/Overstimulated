@@ -20,7 +20,7 @@ This mod allows you to connect your Buttplug.io compatible toys to Overcooked! A
    - **On the list of builds, select the one that says BepInEx Unity (IL2CPP) for Windows (x64) games (or mac)**
    - [Install guide](https://docs.bepinex.dev/master/articles/user_guide/installation/unity_il2cpp.html) (You want x64, not x86)
    - If you're having problems with this step, feel free to contact me on twitter, bluesky or discord!
-3. Install the Overstimulated! All You Can Eat Mod from the releases page and place it in your BepInEx/plugins folder.
+3. Install the Overstimulated! All You Can Eat Mod from the releases page and place the "OvercookedBP folder" in your BepInEx/plugins folder.
 4. Launch the game and enjoy! (the config file shows up after you launch the game for the first time)
 
 ## Config
