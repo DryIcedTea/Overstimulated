@@ -16,6 +16,11 @@ namespace OvercookedBP
                 Plugin.Log.LogInfo($"[Filter] Player filter menu {(_active ? "opened" : "closed")}. Current state:");
                 LogCurrentState();
             }
+            
+            if (Input.GetKeyDown(KeyCode.P))
+            {
+                _ = Plugin.BP.StopDevices();
+            }
 
             if (!_active) return;
 

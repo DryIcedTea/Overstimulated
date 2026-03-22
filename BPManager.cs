@@ -13,6 +13,7 @@ namespace OvercookedBP
     {
         private ButtplugClient _client;
         private ManualLogSource _logger;
+        public bool IsVibrating;
 
         public BPManager(ManualLogSource logger)
         {
@@ -86,9 +87,11 @@ namespace OvercookedBP
 
         public async Task VibrateDevices(float level)
         {
+            if (IsVibrating) return;
             if (!HasVibrators()) return;
 
             float intensity = Mathf.Clamp(level, 0f, 100f) / 100f;
+            IsVibrating = true;
 
             foreach (var device in _client.Devices)
             {
@@ -108,6 +111,7 @@ namespace OvercookedBP
 
         public async Task VibrateDevicesPulse(float level, int durationMs = 400)
         {
+            if (IsVibrating) return;
             if (!HasVibrators()) return;
 
             await VibrateDevices(level);
@@ -130,6 +134,8 @@ namespace OvercookedBP
                 await Task.Delay(20);
                 await device.RunOutputAsync(DeviceOutput.Vibrate.Percent(0));
             }
+
+            IsVibrating = false;
         }
 
         private bool HasVibrators()
